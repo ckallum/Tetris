@@ -165,10 +165,10 @@ class Tetris(object):
         self.window = pygame.display.set_mode((self.width, self.height))
         self.grid = ''
         self.cell = 10
-        self.posX = 0
-        self.posY = self.height - self.cell
+        self.posX = self.width/2
+        self.posY = 0
         self.vel = 10
-        self.currentShape = Shape(0, 0, choice(shapes))
+        self.currentShape = Shape(0, self.width/2, choice(shapes))
         self.nextShape = getNextShape(self.currentShape)
         self.difficulty = 1
 
