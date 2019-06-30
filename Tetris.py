@@ -1,5 +1,6 @@
 import pygame
 from random import choice
+from copy import copy
 
 dimensions = {'blockSize': 20, 'winHeight': 900, 'winWidth': 600, 'rows': 16, 'cols': 8}
 
@@ -133,21 +134,22 @@ def clearLine(grid, occupied):
     pass
 
 
-def getNextShape(current):
-    possible = list(filter(lambda x: x != current.getShape(), shapes))
-    return choice(possible)
+def getNextShape():
+    return Shape(5, 0, choice(shapes))
 
 
 def drawShape(surface, shape):
     pass
 
 
-def createGrid(occupied={}):
-    pass
+def drawGame(surface, grid, width, height):
+    surface.fill((0, 0, 0))
+    font = pygame.font.SysFont('\'comicsans\'', 60)
+    label = font.render('\'TETRIS\'', 1, (255, 255, 255))
+    surface.blit(label, (width + grid.width / 2 - (label.get_width() / 2), 30))
 
-
-def drawGame(surface, rows, cols):
-    pass
+    pygame.draw.rect(surface, (255, 0, 0), (width, height, grid.width, grid.height))
+    pygame.display.update()
 
 
 def gameOver(grid):
@@ -158,48 +160,78 @@ def drawNextShape(shape, surface):
     pass
 
 
+class Grid(object):
+    def __init__(self, occupied={}):
+        self.rows = 20
+        self.columns = 10
+        self.width = 0
+        self.height = 0
+        self.grid = [[[0, 0, 0] for x in range(self.columns)] for x in range(self.rows)]
+        self.occupied = occupied
+
+        for i in range(len(self.grid)):
+            for j in range(len(self.grid[i])):
+                if (j, i) in occupied:
+                    block = occupied[(j, i)]
+                    self.grid[i][j] = block
+
+    def getGrid(self):
+        return self.grid
+
+    def isOccupied(self, x, y):
+        if (x, y) in self.occupied:
+            return True
+        return False
+
+    def drawGrid(self, surface, width, height):
+        pass
+
+
+def validMove(grid, x, y):
+    pass
+
+
 class Tetris(object):
     def __init__(self):
-        self.width = 600
-        self.height = 900
+        self.width = 1000
+        self.height = 1000
         self.window = pygame.display.set_mode((self.width, self.height))
-        self.grid = ''
+        self.grid = Grid()
         self.cell = 10
-        self.posX = self.width/2
-        self.posY = 0
-        self.vel = 10
-        self.currentShape = Shape(0, self.width/2, choice(shapes))
-        self.nextShape = getNextShape(self.currentShape)
+        self.currentShape = getNextShape()
+        self.nextShape = getNextShape()
         self.difficulty = 1
+        self.clock = pygame.time.Clock()
 
     def run(self):
         run = True
         pygame.init()
-        pygame.display.set_caption('Tetris')
+        pygame.display.set_caption('Tetris by Callum Ke')
 
         while run:
+            self.grid.drawGrid(self.window, self.width, self.height)
             pygame.time.delay(100)
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     run = False
 
             keys = pygame.key.get_pressed()
-            if keys[pygame.K_LEFT] and self.posX > 1:
-                self.posX -= self.vel
+            if keys[pygame.K_LEFT] and validMove(self.grid, self.currentShape.x - 1, self.currentShape.y):
+                self.currentShape.x -= 1
 
-            if keys[pygame.K_RIGHT] and self.posX < self.width - self.cell:
-                self.posX += self.vel
+            if keys[pygame.K_RIGHT] and validMove(self.grid, self.currentShape.x - 1, self.currentShape.y):
+                self.currentShape.x += 1
 
             if keys[pygame.K_UP]:
-                self.currentShape = self.nextShape
-                self.nextShape = getNextShape(self.currentShape)
+                temp = copy(self.currentShape)
+                temp.changeRotation()
+                if validMove(self.grid, temp.x, temp.y):
+                    self.currentShape.changeRotation()
 
-            if keys[pygame.K_DOWN] and self.posY < self.height - self.cell:
-                self.posY += self.vel
+            if keys[pygame.K_DOWN] and validMove(self.grid, self.currentShape.x, self.currentShape.y + 1):
+                self.currentShape.y += 1
 
-            self.window.fill((0, 0, 0))
-            pygame.draw.rect(self.window, (255, 0, 0), (self.posX, self.posY, self.cell, self.cell))
-            pygame.display.update()
+            drawGame(self.window, self.grid, self.width, self.height)
 
         pygame.quit()
 
