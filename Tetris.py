@@ -126,14 +126,6 @@ class Shape(object):
         return self.shape
 
 
-def collision(shape, grid, occupied):
-    pass
-
-
-def clearLine(grid, occupied):
-    pass
-
-
 def getNextShape():
     return Shape(5, 0, choice(shapes))
 
@@ -156,8 +148,9 @@ def gameOver(grid):
     pass
 
 
-def drawNextShape(shape, surface):
+def displayNextShape(shape, surface):
     pass
+# function to display the next shape on the side
 
 
 class Grid(object):
@@ -186,9 +179,13 @@ class Grid(object):
     def drawGrid(self, surface, width, height):
         pass
 
+    def clearLine(self):
+        pass
+    # clear the line, move all occupied blocks above down one y position
+
 
 def validMove(grid, x, y):
-    pass
+    return (x, y) in grid.occupied
 
 
 class Tetris(object):
