@@ -126,7 +126,7 @@ class Shape(object):
         return self.shape
 
     def getShapeCoordinates(self):
-        pic = self.shape[self.shape.rotation]
+        pic = self.shape[self.rotation]
         coordinates = []
         for i, line in enumerate(pic):
             row = list(line)
@@ -169,6 +169,12 @@ class Grid(object):
                 pygame.draw.line(surface, (128, 128, 128), (sx + j * self.cell, sy),
                                  (sx + j * self.cell, sy + self.height))
 
+    def drawShapes(self, surface, originX, originY):
+        for i in range(len(self.grid)):
+            for j in range(len(self.grid[i])):
+                pygame.draw.rect(surface, self.grid[i][j],
+                                 ((originX + j * self.cell), (originY + j * self.cell), self.cell, self.cell))
+
     def fillGrid(self):
         for i in range(len(self.grid)):
             for j in range(len(self.grid[i])):
@@ -181,12 +187,6 @@ class Grid(object):
     # clear the line, move all occupied blocks above down one y position
 
 
-def drawShapes(grid, surface, originX, originY):
-    for i in range(len(grid.grid)):
-        for j in range(len(grid.grid[i])):
-            pygame.draw.rect(surface, grid.grid[i][j], ((originX + j * grid.cell), (originY + j * grid.cell), grid.cell, grid.cell), 0)
-
-
 def getNextShape():
     return Shape(5, 0, choice(shapes))
 
@@ -194,7 +194,7 @@ def getNextShape():
 def drawLabel(surface, grid, originX, originY):
     surface.fill((0, 0, 0))
     font = pygame.font.SysFont('\'comicsans\'', 60)
-    label = font.render('\'TETRIS\'', 1, (255, 255, 255))
+    label = font.render('TETRIS', 1, (255, 255, 255))
     surface.blit(label, (originX + grid.width / 2 - (label.get_width() / 2), 30))
 
 
@@ -225,6 +225,16 @@ def gameLost(coordinates):
     return False
 
 
+def drawTest(surface):
+    s = Shape(10, 20, S7)
+    coords = s.getShapeCoordinates()
+    print(coords)
+    for j, i in enumerate(coords):
+        (x, y) = i
+        pygame.draw.rect(surface, s.colour, (x*30,
+                                             y*30, 30, 30))
+
+
 class Tetris(object):
     def __init__(self):
         self.width = 800
@@ -247,6 +257,9 @@ class Tetris(object):
         while run:
             drawLabel(self.window, self.grid, self.gridOriginX, self.gridOriginY)
             self.grid.drawGrid(self.window, self.gridOriginX, self.gridOriginY)
+            self.grid.fillGrid()
+
+            drawTest(self.window)
             pygame.time.delay(100)
             fallTime = self.clock.get_rawtime()
             self.clock.tick()
@@ -279,8 +292,7 @@ class Tetris(object):
             if keys[pygame.K_DOWN] and validMove(self.grid, self.currentShape.x, self.currentShape.y + 1):
                 self.currentShape.y += 1
 
-            self.grid.drawGrid(self.window, self.gridOriginX, self.gridOriginY)
-            drawShapes(self.grid, self.window, self.gridOriginX, self.gridOriginY)
+            self.grid.drawShapes(self.window, self.gridOriginX, self.gridOriginY)
             update()
 
         pygame.quit()
