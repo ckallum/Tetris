@@ -135,7 +135,7 @@ class Shape(object):
                     coordinates.append((self.x + j, self.y + i))
 
         for i, coord in enumerate(coordinates):
-            coordinates[i] = (coord[0] - 2, coord[1] - 4)
+            coordinates[i] = (coord[0], coord[1])
 
         return coordinates
 
@@ -150,16 +150,20 @@ class Grid(object):
         self.width = 300
         self.height = 600
         self.grid = [[(0, 0, 0) for _ in range(self.columns)] for _ in range(self.rows)]
-        self.occupied = [[(0, 0, 0) for _ in range(self.columns)] for _ in range(self.rows)]
+        self.occupied = {}
         self.cell = 30
 
-    def isOccupied(self, x, y):
-        if self.occupied[x][y] != (0, 0, 0):
-            return True
+    def isOccupied(self, coords):
+        validSpaces = [[(j, i) for j in range(10) if self.grid[i][j] == (0, 0, 0)] for i in range(20)]
+        validSpaces = [j for sub in validSpaces for j in sub]
+        for coord in coords:
+            if coord not in validSpaces:
+                if coord[1] > -1:
+                    return True
         return False
 
     def addOccupied(self, shape):
-        self.occupied[shape.x][shape.y] = shape.colour
+        self.occupied[shape.x, shape.y] = shape.colour
 
     def drawGrid(self, surface, originX, originY):
         sx = originX
@@ -179,14 +183,27 @@ class Grid(object):
                                  ((originX + row * self.cell), (originY + col * self.cell), self.cell, self.cell))
 
     def fillGrid(self):
-        for row in range(len(self.occupied)):
-            for col in range(len(self.occupied[row])):
-                if self.occupied[row][col] != (0, 0, 0):
-                    colour = self.occupied[row][col]
-                    self.grid[row][col] = colour
+        for coord in self.occupied:
+            col, row = coord
+            if self.grid[row][col] != (0, 0, 0):
+                colour = self.occupied[col, row]
+                self.grid[row][col] = colour
 
     def clearLine(self):
-        pass
+        count = 0
+        for i in range(len(self.grid) - 1, -1, -1):
+            row = self.grid[i]
+            if (0, 0, 0) not in row:
+                count += 1
+                for j in range(len(row)):
+                    try:
+                        del self.occupied[j, i]
+                    except:
+                        continue
+
+        if count > 0:
+            pass
+
     # clear the line, move all occupied blocks above down one y position
 
 
@@ -212,13 +229,11 @@ def displayNextShape(shape, surface):
 # function to display the next shape on the side
 
 
-def drawTest(surface, s):
-    coords = s.getShapeCoordinates()
-    print(coords)
-    for j, i in enumerate(coords):
-        (x, y) = i
-        pygame.draw.rect(surface, s.colour, (x * 30,
-                                             y * 30, 30, 30))
+def drawGame(surface, grid, gridOriginX, gridOriginY):
+    grid.fillGrid()
+    grid.drawOccupied(surface, gridOriginX, gridOriginY)
+    grid.drawGrid(surface, gridOriginX, gridOriginY)
+    update()
 
 
 class Tetris(object):
@@ -248,8 +263,6 @@ class Tetris(object):
         while run:
             pygame.display.set_caption('Tetris by Callum Ke')
             drawLabel(self.window, self.grid, self.gridOriginX)
-
-            drawTest(self.window, self.currentShape)
             pygame.time.delay(100)
             fallTime = self.clock.get_rawtime()
             self.clock.tick()
@@ -257,7 +270,7 @@ class Tetris(object):
             if fallTime / 1000 >= self.speed:
                 fallTime = 0
                 self.currentShape.y += 1
-                if not (self.grid.isOccupied(self.currentShape.x, self.currentShape.y)) and self.currentShape.y > 0:
+                if not (self.grid.isOccupied(self.currentShape.getShapeCoordinates())) and self.currentShape.y > 0:
                     self.currentShape.y -= 1
                     self.currentShape = self.nextShape
                     self.nextShape = getNextShape()
@@ -269,30 +282,33 @@ class Tetris(object):
                     pygame.display.quit()
 
                 if event.type == pygame.KEYDOWN:
-                    if event.type == pygame.K_LEFT and not(self.grid.isOccupied(self.currentShape.x - 1, self.currentShape.y)):
+                    if event.type == pygame.K_LEFT:
                         self.currentShape.x -= 1
+                        if self.grid.isOccupied(self.currentShape.getShapeCoordinates()):
+                            self.currentShape.x += 1
 
-                    if event.type == pygame.K_RIGHT and not(self.grid.isOccupied(self.currentShape.x - 1, self.currentShape.y)):
+                    if event.type == pygame.K_RIGHT:
                         self.currentShape.x += 1
+                        if self.grid.isOccupied(self.currentShape.getShapeCoordinates()):
+                            self.currentShape.x -= 1
 
                     if event.type == pygame.K_UP:
                         temp = copy(self.currentShape)
                         temp.changeRotation()
-                        if not(self.grid.isOccupied(temp.x, temp.y)):
+                        if not (self.grid.isOccupied(temp.getShapeCoordinates())):
                             self.currentShape.changeRotation()
 
-                    if event.type == pygame.K_UP and not(self.grid.isOccupied(self.currentShape.x, self.currentShape.y + 1)):
+                    if event.type == pygame.K_DOWN:
                         self.currentShape.y += 1
+                        if self.grid.isOccupied(self.currentShape.getShapeCoordinates()):
+                            self.currentShape.y -= 1
 
             for i in range(len(self.currentShape.getShapeCoordinates())):
                 x, y = self.currentShape.getShapeCoordinates()[i]
                 if y > -1:
                     self.grid.grid[y][x] = self.currentShape.colour
 
-            self.grid.fillGrid()
-            self.grid.drawOccupied(self.window, self.gridOriginX, self.gridOriginY)
-            self.grid.drawGrid(self.window, self.gridOriginX, self.gridOriginY)
-            update()
+            drawGame(self.window, self.grid, self.gridOriginX, self.gridOriginY)
 
             if self.gameOver():
                 # display game over
