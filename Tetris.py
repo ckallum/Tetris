@@ -122,9 +122,6 @@ class Shape(object):
     def changeRotation(self):
         self.rotation = (self.rotation + 1) % self.size
 
-    def getShape(self):
-        return self.shape
-
     def getShapeCoordinates(self):
         pic = self.shape[self.rotation]
         coordinates = []
@@ -135,11 +132,11 @@ class Shape(object):
                     coordinates.append((self.x + j, self.y + i))
 
         for i, coord in enumerate(coordinates):
-            coordinates[i] = (coord[0], coord[1])
+            coordinates[i] = (coord[0]+1, coord[1]+2)
 
         return coordinates
 
-    def drawShape(self, surface, shape):
+    def drawNextShape(self, surface, shape):
         pass
 
 
@@ -155,7 +152,7 @@ class Grid(object):
 
     def isOccupied(self, coords):
         validSpaces = [[(j, i) for j in range(10) if self.grid[i][j] == (0, 0, 0)] for i in range(20)]
-        validSpaces = [j for sub in validSpaces for j in sub]
+        validSpaces = [i for sub in validSpaces for i in sub]
         for coord in coords:
             if coord not in validSpaces:
                 if coord[1] > -1:
@@ -163,7 +160,9 @@ class Grid(object):
         return False
 
     def addOccupied(self, shape):
-        self.occupied[shape.x, shape.y] = shape.colour
+        for coords in shape.getShapeCoordinates():
+            x, y = coords
+            self.occupied[(x, y)] = shape.colour
 
     def drawGrid(self, surface, originX, originY):
         sx = originX
@@ -176,18 +175,17 @@ class Grid(object):
                 pygame.draw.line(surface, (128, 128, 128), (sx + j * self.cell, sy),
                                  (sx + j * self.cell, sy + self.height))
 
-    def drawOccupied(self, surface, originX, originY):
+    def drawShapesInGrid(self, surface, originX, originY):
         for row in range(len(self.grid)):
             for col in range(len(self.grid[row])):
                 pygame.draw.rect(surface, self.grid[row][col],
                                  ((originX + row * self.cell), (originY + col * self.cell), self.cell, self.cell))
 
     def fillGrid(self):
-        for coord in self.occupied:
-            col, row = coord
-            if self.grid[row][col] != (0, 0, 0):
-                colour = self.occupied[col, row]
-                self.grid[row][col] = colour
+        for i in range(len(self.grid)):
+            for j in range(len(self.grid[i])):
+                if (j, i) in self.occupied:
+                    self.grid[i][j] = self.occupied[(j, i)]
 
     def clearLine(self):
         count = 0
@@ -197,7 +195,7 @@ class Grid(object):
                 count += 1
                 for j in range(len(row)):
                     try:
-                        del self.occupied[j, i]
+                        del self.occupied[(j, i)]
                     except:
                         continue
 
@@ -230,8 +228,7 @@ def displayNextShape(shape, surface):
 
 
 def drawGame(surface, grid, gridOriginX, gridOriginY):
-    grid.fillGrid()
-    grid.drawOccupied(surface, gridOriginX, gridOriginY)
+    grid.drawShapesInGrid(surface, gridOriginX, gridOriginY)
     grid.drawGrid(surface, gridOriginX, gridOriginY)
     update()
 
@@ -248,7 +245,9 @@ class Tetris(object):
         self.nextShape = getNextShape()
         self.difficulty = 1
         self.clock = pygame.time.Clock()
+        self.fallTime = 0
         self.speed = 0.2
+        self.change = False
 
     def gameOver(self):
         # for coord in self.grid.occupied:
@@ -261,52 +260,54 @@ class Tetris(object):
         pygame.init()
 
         while run:
+            self.grid.fillGrid()
             pygame.display.set_caption('Tetris by Callum Ke')
             drawLabel(self.window, self.grid, self.gridOriginX)
-            pygame.time.delay(100)
-            fallTime = self.clock.get_rawtime()
+            self.fallTime += self.clock.get_rawtime()
             self.clock.tick()
 
-            if fallTime / 1000 >= self.speed:
-                fallTime = 0
+            if self.fallTime / 1000 > self.speed:
+                self.fallTime = 0
                 self.currentShape.y += 1
-                if not (self.grid.isOccupied(self.currentShape.getShapeCoordinates())) and self.currentShape.y > 0:
+                if self.grid.isOccupied(self.currentShape.getShapeCoordinates()) and self.currentShape.y > 0:
                     self.currentShape.y -= 1
-                    self.currentShape = self.nextShape
-                    self.nextShape = getNextShape()
-                    self.grid.addOccupied(self.currentShape)
-
+                    self.change = True
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     run = False
                     pygame.display.quit()
 
-                if event.type == pygame.KEYDOWN:
-                    if event.type == pygame.K_LEFT:
-                        self.currentShape.x -= 1
-                        if self.grid.isOccupied(self.currentShape.getShapeCoordinates()):
-                            self.currentShape.x += 1
-
-                    if event.type == pygame.K_RIGHT:
+                if event.type == pygame.K_LEFT:
+                    self.currentShape.x -= 1
+                    if self.grid.isOccupied(self.currentShape.getShapeCoordinates()):
                         self.currentShape.x += 1
-                        if self.grid.isOccupied(self.currentShape.getShapeCoordinates()):
-                            self.currentShape.x -= 1
 
-                    if event.type == pygame.K_UP:
-                        temp = copy(self.currentShape)
-                        temp.changeRotation()
-                        if not (self.grid.isOccupied(temp.getShapeCoordinates())):
-                            self.currentShape.changeRotation()
+                if event.type == pygame.K_RIGHT:
+                    self.currentShape.x += 1
+                    if self.grid.isOccupied(self.currentShape.getShapeCoordinates()):
+                        self.currentShape.x -= 1
 
-                    if event.type == pygame.K_DOWN:
-                        self.currentShape.y += 1
-                        if self.grid.isOccupied(self.currentShape.getShapeCoordinates()):
-                            self.currentShape.y -= 1
+                if event.type == pygame.K_UP:
+                    temp = copy(self.currentShape)
+                    temp.changeRotation()
+                    if not (self.grid.isOccupied(temp.getShapeCoordinates())):
+                        self.currentShape.changeRotation()
 
-            for i in range(len(self.currentShape.getShapeCoordinates())):
-                x, y = self.currentShape.getShapeCoordinates()[i]
-                if y > -1:
-                    self.grid.grid[y][x] = self.currentShape.colour
+                if event.type == pygame.K_DOWN:
+                    self.currentShape.y += 1
+                    if self.grid.isOccupied(self.currentShape.getShapeCoordinates()):
+                        self.currentShape.y -= 1
+
+            for coord in self.currentShape.getShapeCoordinates():
+                col, row = coord
+                if row > -1:
+                    self.grid.grid[row][col] = self.currentShape.colour
+
+            if self.change:
+                self.grid.addOccupied(self.currentShape)
+                self.currentShape = self.nextShape
+                self.nextShape = getNextShape()
+                self.change = False
 
             drawGame(self.window, self.grid, self.gridOriginX, self.gridOriginY)
 
