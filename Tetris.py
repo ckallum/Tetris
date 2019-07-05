@@ -132,7 +132,7 @@ class Shape(object):
                     coordinates.append((self.x + j, self.y + i))
 
         for i, coord in enumerate(coordinates):
-            coordinates[i] = (coord[0]+1, coord[1]+2)
+            coordinates[i] = (coord[0]-3, coord[1]-1)
 
         return coordinates
 
@@ -143,16 +143,16 @@ class Shape(object):
 class Grid(object):
     def __init__(self):
         self.rows = 20
-        self.columns = 10
-        self.width = 300
+        self.columns = 11
+        self.width = 330
         self.height = 600
         self.grid = [[(0, 0, 0) for _ in range(self.columns)] for _ in range(self.rows)]
         self.occupied = {}
         self.cell = 30
 
     def isOccupied(self, coords):
-        validSpaces = [[(j, i) for j in range(10) if self.grid[i][j] == (0, 0, 0)] for i in range(20)]
-        validSpaces = [i for sub in validSpaces for i in sub]
+        validSpaces = [[(j, i) for j in range(11) if self.grid[i][j] == (0, 0, 0)] for i in range(20)]
+        validSpaces = [j for sub in validSpaces for j in sub]
         for coord in coords:
             if coord not in validSpaces:
                 if coord[1] > -1:
@@ -179,7 +179,7 @@ class Grid(object):
         for row in range(len(self.grid)):
             for col in range(len(self.grid[row])):
                 pygame.draw.rect(surface, self.grid[row][col],
-                                 ((originX + row * self.cell), (originY + col * self.cell), self.cell, self.cell))
+                                 (originX + col * self.cell, originY + row * self.cell, self.cell, self.cell), 0)
 
     def fillGrid(self):
         for i in range(len(self.grid)):
@@ -206,7 +206,7 @@ class Grid(object):
 
 
 def getNextShape():
-    return Shape(5, 0, choice(shapes))
+    return Shape(6, 0, choice(shapes))
 
 
 def drawLabel(surface, grid, originX):
@@ -218,10 +218,6 @@ def drawLabel(surface, grid, originX):
 
 def update():
     pygame.display.update()
-
-
-def displayNextShape(shape, surface):
-    pass
 
 
 # function to display the next shape on the side
@@ -246,7 +242,7 @@ class Tetris(object):
         self.difficulty = 1
         self.clock = pygame.time.Clock()
         self.fallTime = 0
-        self.speed = 0.2
+        self.speed = 0.25
         self.change = False
 
     def gameOver(self):
