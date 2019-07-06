@@ -123,7 +123,7 @@ class Shape(object):
         self.rotation = (self.rotation + 1) % self.size
 
     def getShapeCoordinates(self):
-        pic = self.shape[self.rotation]
+        pic = self.shape[self.rotation % self.size]
         coordinates = []
         for i, line in enumerate(pic):
             row = list(line)
@@ -132,7 +132,7 @@ class Shape(object):
                     coordinates.append((self.x + j, self.y + i))
 
         for i, coord in enumerate(coordinates):
-            coordinates[i] = (coord[0]-3, coord[1]-1)
+            coordinates[i] = (coord[0] - 2, coord[1] - 4)
 
         return coordinates
 
@@ -143,21 +143,21 @@ class Shape(object):
 class Grid(object):
     def __init__(self):
         self.rows = 20
-        self.columns = 11
-        self.width = 330
+        self.columns = 10
+        self.width = 300
         self.height = 600
         self.grid = [[(0, 0, 0) for _ in range(self.columns)] for _ in range(self.rows)]
         self.occupied = {}
         self.cell = 30
 
-    def isOccupied(self, coords):
-        validSpaces = [[(j, i) for j in range(11) if self.grid[i][j] == (0, 0, 0)] for i in range(20)]
-        validSpaces = [j for sub in validSpaces for j in sub]
+    def isValidSpace(self, coords):
+        validSpaces = [(j, i) for j in range(self.columns) for i in range(self.rows) if self.grid[i][j] == (0, 0, 0)]
+        # validSpaces = [xy for subList in validSpaces for xy in subList]
         for coord in coords:
             if coord not in validSpaces:
                 if coord[1] > -1:
-                    return True
-        return False
+                    return False
+        return True
 
     def addOccupied(self, shape):
         for coords in shape.getShapeCoordinates():
@@ -200,7 +200,13 @@ class Grid(object):
                         continue
 
         if count > 0:
-            pass
+            for key in sorted(list(self.occupied), key=lambda x: x[1])[::-1]:
+                x, y = key
+                if y < count:
+                    newKey = (x, y + count)
+                    self.occupied[newKey] = self.occupied.pop(key)
+
+        return count
 
     # clear the line, move all occupied blocks above down one y position
 
@@ -265,38 +271,40 @@ class Tetris(object):
             if self.fallTime / 1000 > self.speed:
                 self.fallTime = 0
                 self.currentShape.y += 1
-                if self.grid.isOccupied(self.currentShape.getShapeCoordinates()) and self.currentShape.y > 0:
+                if not (self.grid.isValidSpace(
+                        self.currentShape.getShapeCoordinates())) and self.currentShape.y > self.grid.rows:
                     self.currentShape.y -= 1
                     self.change = True
+
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     run = False
                     pygame.display.quit()
 
-                if event.type == pygame.K_LEFT:
-                    self.currentShape.x -= 1
-                    if self.grid.isOccupied(self.currentShape.getShapeCoordinates()):
-                        self.currentShape.x += 1
-
-                if event.type == pygame.K_RIGHT:
-                    self.currentShape.x += 1
-                    if self.grid.isOccupied(self.currentShape.getShapeCoordinates()):
+                if event.type == pygame.KEYDOWN:
+                    if event.type == pygame.K_LEFT:
                         self.currentShape.x -= 1
+                        if not(self.grid.isValidSpace(self.currentShape.getShapeCoordinates())):
+                            self.currentShape.x += 1
 
-                if event.type == pygame.K_UP:
-                    temp = copy(self.currentShape)
-                    temp.changeRotation()
-                    if not (self.grid.isOccupied(temp.getShapeCoordinates())):
-                        self.currentShape.changeRotation()
+                    if event.type == pygame.K_RIGHT:
+                        self.currentShape.x += 1
+                        if not (self.grid.isValidSpace(self.currentShape.getShapeCoordinates())):
+                            self.currentShape.x -= 1
 
-                if event.type == pygame.K_DOWN:
-                    self.currentShape.y += 1
-                    if self.grid.isOccupied(self.currentShape.getShapeCoordinates()):
-                        self.currentShape.y -= 1
+                    if event.type == pygame.K_UP:
+                        self.currentShape.rotation += 1
+                        if not (self.grid.isValidSpace(self.currentShape.getShapeCoordinates())):
+                            self.currentShape.rotation -= 1
+
+                    if event.type == pygame.K_DOWN:
+                        self.currentShape.y += 1
+                        if not (self.grid.isValidSpace(self.currentShape.getShapeCoordinates())):
+                            self.currentShape.y -= 1
 
             for coord in self.currentShape.getShapeCoordinates():
                 col, row = coord
-                if row > -1:
+                if -1 < row < self.grid.rows:
                     self.grid.grid[row][col] = self.currentShape.colour
 
             if self.change:
@@ -304,6 +312,7 @@ class Tetris(object):
                 self.currentShape = self.nextShape
                 self.nextShape = getNextShape()
                 self.change = False
+                score = self.grid.clearLine()
 
             drawGame(self.window, self.grid, self.gridOriginX, self.gridOriginY)
 
