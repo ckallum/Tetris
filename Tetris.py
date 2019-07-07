@@ -1,8 +1,5 @@
 import pygame
 from random import choice
-from copy import copy
-
-dimensions = {'blockSize': 20, 'winHeight': 900, 'winWidth': 600, 'rows': 16, 'cols': 8}
 
 S1 = [['.....',
        '......',
@@ -132,7 +129,7 @@ class Shape(object):
                     coordinates.append((self.x + j, self.y + i))
 
         for i, coord in enumerate(coordinates):
-            coordinates[i] = (coord[0] - 2, coord[1] - 4)
+            coordinates[i] = (coord[0], coord[1])
 
         return coordinates
 
@@ -159,10 +156,10 @@ class Grid(object):
                     return False
         return True
 
-    def addOccupied(self, shape):
-        for coords in shape.getShapeCoordinates():
-            x, y = coords
-            self.occupied[(x, y)] = shape.colour
+    def addOccupied(self, coords, colour):
+        for coord in coords:
+            x, y = coord
+            self.occupied[(x, y)] = colour
 
     def drawGrid(self, surface, originX, originY):
         sx = originX
@@ -252,9 +249,9 @@ class Tetris(object):
         self.change = False
 
     def gameOver(self):
-        # for coord in self.grid.occupied:
-        #     if coord[1] < 1:
-        #         return True
+        for coord in self.grid.occupied:
+            if coord[1] < 1:
+                return True
         return False
 
     def run(self):
@@ -284,7 +281,7 @@ class Tetris(object):
                 if event.type == pygame.KEYDOWN:
                     if event.type == pygame.K_LEFT:
                         self.currentShape.x -= 1
-                        if not(self.grid.isValidSpace(self.currentShape.getShapeCoordinates())):
+                        if not (self.grid.isValidSpace(self.currentShape.getShapeCoordinates())):
                             self.currentShape.x += 1
 
                     if event.type == pygame.K_RIGHT:
@@ -308,7 +305,7 @@ class Tetris(object):
                     self.grid.grid[row][col] = self.currentShape.colour
 
             if self.change:
-                self.grid.addOccupied(self.currentShape)
+                self.grid.addOccupied(self.currentShape.getShapeCoordinates(), self.currentShape.colour)
                 self.currentShape = self.nextShape
                 self.nextShape = getNextShape()
                 self.change = False
@@ -320,6 +317,7 @@ class Tetris(object):
                 # display game over
                 update()
                 pygame.time.delay(1500)
+                print("hi")
                 run = False
                 # update score
 
