@@ -1,4 +1,5 @@
 import pygame
+from collections import deque
 from random import choice
 from copy import copy
 
@@ -185,7 +186,24 @@ class Grid(object):
             self.grid[row][col] = self.occupied[coord]
 
     def clearLine(self):
-        pass
+        rowsDeleted = deque()
+        for i in range(len(self.grid)):
+            row = self.grid[i]
+            if (0, 0, 0) not in row:
+                rowsDeleted.appendleft(i)
+                for j in range(len(row)):
+                    try:
+                        del self.occupied[(j, i)]
+                    except:
+                        continue
+
+        if len(rowsDeleted) > 0:
+            increment = len(rowsDeleted)
+            while rowsDeleted:
+                current = rowsDeleted.pop()
+                for x in range(self.columns):
+                    self.grid[current][x] = self.grid[current-increment][x]
+                    self.occupied[(x, current)] = self.grid[current][x]
 
     # clear the line, move all occupied blocks above down one y position
 
@@ -294,6 +312,7 @@ class Tetris(object):
                 self.grid.addOccupied(self.currentShape.getShapeCoordinates(), self.currentShape.colour)
                 self.currentShape = self.nextShape
                 self.nextShape = getNextShape()
+                self.grid.clearLine()
                 self.change = False
 
             drawGame(self.window, self.grid, self.gridOriginX, self.gridOriginY)
