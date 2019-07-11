@@ -135,8 +135,20 @@ class Shape(object):
 
         return coordinates
 
-    def drawNextShape(self, surface, shape):
-        pass
+    def drawNextShape(self, surface, gridOriginX, gridOriginY, windowWidth, windowHeight):
+        font = pygame.font.SysFont('comicsans', 30)
+        label = font.render('Next Shape', 1, (255, 255, 255))
+        x = gridOriginX + windowWidth + 50
+        y = gridOriginY + windowHeight / 2 - 100
+        pic = self.shape[self.rotation % self.size]
+        pygame.draw.rect(surface, (0, 0, 0), (x, y, 200, 150), 0)
+
+        for i, line in enumerate(pic):
+            row = list(line)
+            for j, column in enumerate(row):
+                if column == '0':
+                    pygame.draw.rect(surface, self.colour, (x + j * 30, y + i * 30, 30, 30), 0)
+        surface.blit(label, (x + 10, y - 30))
 
 
 class Grid(object):
@@ -200,12 +212,15 @@ class Grid(object):
         if increment > 0:
             while rowsDeleted:
                 current = rowsDeleted.pop()
-                for x in range(self.columns):
-                    if (x, current-increment) in self.occupied:
-                        rowsDeleted.appendleft(current-increment)
-                        self.occupied[(x, current)] = self.occupied.pop((x, current-increment))
+                # Sorting occupied by y values, largest to smallest: largest = first available row in occupied
+                for key in sorted(list(self.occupied), key=lambda c: c[1])[::-1]:
+                    x, y = key
+                    if y < current:
+                        self.occupied[(x, current)] = self.occupied.pop((x, y))
 
         # clear the line, move all occupied blocks above down one y position
+        # clear rows from occupied, first row deleted = first row in occupied, second = second in occupied etc.
+        # Sort occupied by row coordinates, current row = all occupied coordinates with the same row coordinate
 
 
 def getNextShape():
@@ -223,12 +238,10 @@ def update():
     pygame.display.update()
 
 
-# function to display the next shape on the side
-
-
-def drawGame(surface, grid, gridOriginX, gridOriginY):
+def drawGame(surface, grid, gridOriginX, gridOriginY, nextShape):
     grid.drawShapesInGrid(surface, gridOriginX, gridOriginY)
     grid.drawGrid(surface, gridOriginX, gridOriginY)
+    nextShape.drawNextShape(surface, gridOriginX, gridOriginY, grid.width, grid.height)
     update()
 
 
@@ -242,10 +255,10 @@ class Tetris(object):
         self.gridOriginY = (self.height - self.grid.height)
         self.currentShape = getNextShape()
         self.nextShape = getNextShape()
-        self.difficulty = 1
         self.clock = pygame.time.Clock()
         self.fallTime = 0
-        self.speed = 0.25
+        self.fallSpeed = 0.25
+        self.difficultyTime = 0
         self.change = False
 
     def gameOver(self):
@@ -253,6 +266,14 @@ class Tetris(object):
             if coord[1] < 1:
                 return True
         return False
+
+    def printGameOver(self):
+        font = pygame.font.SysFont("comicsans", 80, bold=True)
+        label = font.render("Game Over", 1, (255, 255, 255))
+
+        self.window.blit(label, (
+            self.gridOriginX + self.grid.width / 2 - (label.get_width() / 2),
+            self.gridOriginY + self.grid.height / 2 - label.get_height() / 2))
 
     def run(self):
         run = True
@@ -263,9 +284,15 @@ class Tetris(object):
         while run:
             self.grid.fillGrid()
             self.fallTime += self.clock.get_rawtime()
+            self.difficultyTime += self.clock.get_rawtime()
             self.clock.tick()
 
-            if self.fallTime / 1000 > self.speed:
+            if self.difficultyTime / 1000 > 5:
+                self.difficultyTime = 0
+                if self.difficultyTime > 0.12:
+                    self.difficultyTime -= 0.005
+
+            if self.fallTime / 1000 > self.fallSpeed:
                 self.fallTime = 0
                 self.currentShape.y += 1
                 if not (self.grid.isValidSpace(
@@ -316,15 +343,13 @@ class Tetris(object):
                 self.grid.clearLine()
                 self.change = False
 
-            drawGame(self.window, self.grid, self.gridOriginX, self.gridOriginY)
+            drawGame(self.window, self.grid, self.gridOriginX, self.gridOriginY, self.nextShape)
 
             if self.gameOver():
-                # display game over
+                self.printGameOver()
                 update()
                 pygame.time.delay(1000)
-                print("hi")
                 run = False
-                # update score
 
         pygame.quit()
 
