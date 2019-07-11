@@ -198,6 +198,7 @@ class Grid(object):
             self.grid[row][col] = self.occupied[coord]
 
     def clearLine(self):
+        # Queue for which rows that were deleted first -> filled first
         rowsDeleted = deque()
         for y in range(len(self.grid)):
             row = self.grid[y]
